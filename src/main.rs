@@ -372,7 +372,8 @@ where
             let bin1_f32 = (freq1 / bin_freq).min(spectrum_len_f32);
             let bin1 = clamp_round_to_usize(bin1_f32, 0, last_bin);
 
-            let mut max_mag = 0.0f32;
+            let mut sum = 0.0f32;
+            let count = (bin1 + 1).saturating_sub(bin0).max(1);
 
             for val in output_buf
               .iter()
@@ -380,12 +381,17 @@ where
               .skip(bin0)
               .map(|x| x.norm())
             {
-              if val > max_mag {
-                max_mag = val;
-              }
+              sum += val;
             }
 
-            *bar = (max_mag * 10.0).ln_1p();
+            let count_u16 = u16::try_from(count).unwrap_or(u16::MAX);
+            let avg = sum / f32::from(count_u16);
+
+            let i_u16 = u16::try_from(i).unwrap_or(0);
+            let bar_count_u16 = u16::try_from(BAR_COUNT).unwrap_or(1);
+            let boost =
+              1.0 + (f32::from(i_u16) / f32::from(bar_count_u16)) * 4.0;
+            *bar = (avg * boost * 25.0).ln_1p();
           }
 
           let _ = tx.send(bars);
@@ -437,15 +443,15 @@ fn run(running: Arc<AtomicBool>, rx: Receiver<Vec<f32>>) -> anyhow::Result<()> {
 
     for i in 0..BAR_COUNT {
       if bars[i] > smooth_bars[i] {
-        smooth_bars[i] = 0.5 * smooth_bars[i] + 0.5 * bars[i];
+        smooth_bars[i] = 0.3 * smooth_bars[i] + 0.7 * bars[i];
       } else {
-        smooth_bars[i] = 0.85 * smooth_bars[i] + 0.15 * bars[i];
+        smooth_bars[i] = 0.92 * smooth_bars[i] + 0.08 * bars[i];
       }
 
       if smooth_bars[i] > peaks[i] {
         peaks[i] = smooth_bars[i];
       } else {
-        peaks[i] *= 0.97;
+        peaks[i] *= 0.98;
       }
     }
 
