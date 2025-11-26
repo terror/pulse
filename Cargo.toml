@@ -1,0 +1,13 @@
+[package]
+name = "pulse"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+cpal = "0.15"
+anyhow = "1"
+crossbeam-channel = "0.5"
+
+crossterm = "0.28"
+ratatui = { version = "0.28", features = ["all-widgets", "crossterm"] }
+realfft = "3.5.0"
